@@ -2,7 +2,7 @@ from google.cloud import storage
 from google.oauth2 import service_account
 
 # Đường dẫn đến file JSON key
-key_path = r'C:\Users\Hp Victus\Desktop\Big data\ingest-service\src\key_to_bucket.json'
+key_path = r'./bucketKey.json'
 
 # Tên bucket và tên object test
 bucket_name = 'str-it4931'
