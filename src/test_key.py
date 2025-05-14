@@ -1,34 +1,26 @@
-from google.cloud import storage
-from google.oauth2 import service_account
+import os
+from pyarrow import fs
 
-# Đường dẫn đến file JSON key
-key_path = r'./bucketKey.json'
+# Bước 1: Thiết lập biến môi trường credentials
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"./bucketKey.json"
 
-# Tên bucket và tên object test
-bucket_name = 'str-it4931'
-test_blob_name = 'test_permission_check.txt'
-test_content = 'This is a permission test.'
+# Bước 2: Tạo GCS filesystem
+gcs = fs.GcsFileSystem()
 
-# Tạo client với Service Account
-credentials = service_account.Credentials.from_service_account_file(key_path)
-client = storage.Client(credentials=credentials)
+# Bước 3: Sử dụng `gcs` trong dataset
+import pyarrow.dataset as ds
 
-try:
-    # Lấy bucket
-    bucket = client.get_bucket(bucket_name)
+path_history = "str-it4931/stock_data/history/ticker=AAPL"
 
-    # Ghi file lên bucket
-    blob = bucket.blob(test_blob_name)
-    blob.upload_from_string(test_content)
-    print('✅ Ghi thành công lên bucket.')
+dataset = ds.dataset(
+    path_history,
+    filesystem=gcs,
+    format="parquet",
+    partitioning="hive"
+)
 
-    # Đọc file từ bucket
-    downloaded = blob.download_as_text()
-    print('✅ Đọc thành công:', downloaded)
-
-    # (Tùy chọn) Xóa file test
-    blob.delete()
-    print('🧹 Đã xóa file test khỏi bucket.')
-
-except Exception as e:
-    print('❌ Lỗi khi kiểm tra quyền truy cập:', str(e))
+table = dataset.to_table(
+    filter=(ds.field("year") == 2024) & (ds.field("month").isin([3, 4]))
+)
+df = table.to_pandas()
+print(df.head(100))
