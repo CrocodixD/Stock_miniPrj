@@ -6,9 +6,7 @@ from confluent_kafka import Producer
 import time
 
 # --- Cấu hình Kafka ---
-producer_conf = {
-    'bootstrap.servers': 'localhost:9092'
-}
+producer_conf = {'bootstrap.servers': '192.168.1.239:9092'}
 producer = Producer(producer_conf)
 
 # --- Hàm callback xác nhận gửi dữ liệu ---
@@ -19,7 +17,7 @@ def delivery_report(err, msg):
         print(f"[KAFKA OK] Delivered to {msg.topic()} [{msg.partition()}]")
 
 # --- Danh sách mã cổ phiếu ---
-ticker_list = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'TSLA', 'NVDA', 'NFLX', 'ADBE', 'INTC']
+ticker_list = ['AAPL'] # , 'MSFT', 'AMZN', 'GOOGL', 'META', 'TSLA', 'NVDA', 'NFLX', 'ADBE', 'INTC']
 topic = 'stock_ohlcv'
 
 while True:
@@ -43,20 +41,22 @@ while True:
                 print(f"[WARNING] Không có dữ liệu cho {ticker_symbol}")
                 continue
 
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.droplevel(0)
-
+            # Debug: In cấu trúc DataFrame
+            print(f"[DEBUG] Columns before reset_index: {df.columns}")
             df.reset_index(inplace=True)
+            print(f"[DEBUG] Columns after reset_index: {df.columns}")
+            if not df.empty:
+                print(f"[DEBUG] First row: {df.iloc[0].to_dict()}")
 
             for _, row in df.iterrows():
                 record = {
                     'ticker': ticker_symbol,
-                    'date': row['Date'].strftime('%Y-%m-%d'),
-                    'open': row['Open'],
-                    'high': row['High'],
-                    'low': row['Low'],
-                    'close': row['Close'],
-                    'volume': row['Volume']
+                    'date': row[('Date', '')].strftime('%Y-%m-%d'),
+                    'open': row[('Open', ticker_symbol)],
+                    'high': row[('High', ticker_symbol)],
+                    'low': row[('Low', ticker_symbol)],
+                    'close': row[('Close', ticker_symbol)],
+                    'volume': row[('Volume', ticker_symbol)]
                 }
 
                 json_value = json.dumps(record)
